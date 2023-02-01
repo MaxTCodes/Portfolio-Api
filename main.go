@@ -54,6 +54,7 @@ func init() {
 		if !os.IsNotExist(err) {
 			panic(err)
 		}
+		log.Println("No saved refresh token found!")
 		return
 	}
 	f, err := os.ReadFile(refreshTokenFile)
@@ -91,7 +92,8 @@ func main() {
 	}))
 	app.Use(cors.New(cors.Config{
 		AllowOrigins: "*",
-		AllowMethods: "GET",
+		AllowMethods: "GET,POST",
+		AllowHeaders: "*",
 	}))
 	//#endregion
 
@@ -133,7 +135,7 @@ func main() {
 
 	admin := app.Group(adminPath)
 	admin.Use(func(c *fiber.Ctx) error {
-		// clear old cookies so we don't use that much data :laugh:
+		// clear old cookies, so we don't use that much data :laugh:
 		c.ClearCookie()
 		c.Cookie(&fiber.Cookie{
 			Name:    adminCookieName,
@@ -169,7 +171,7 @@ func main() {
 				Name:    nowPlaying.Item.Name,
 				Playing: nowPlaying.IsPlaying,
 			},
-			"updateExpectedAt": updateNext.Format(time.RFC3339),
+			"songEndTime": updateNext.Format(time.RFC3339),
 		})
 	})
 
