@@ -21,13 +21,12 @@ import (
 )
 
 type (
-	artist struct {
+	info struct {
 		Link, Name string
 	}
 	SongData struct {
-		Artist  artist
-		Name    string
-		Playing bool
+		Artist, Song info
+		Playing      bool
 	}
 )
 
@@ -164,11 +163,14 @@ func main() {
 		return c.JSON(fiber.Map{
 			"success": true,
 			"playingData": SongData{
-				Artist: artist{
+				Artist: info{
 					Link: nowPlaying.Item.Artists[0].ExternalUrls.Spotify,
 					Name: nowPlaying.Item.Artists[0].Name,
 				},
-				Name:    nowPlaying.Item.Name,
+				Song: info{
+					Link: nowPlaying.Item.ExternalUrls.Spotify,
+					Name: nowPlaying.Item.Name,
+				},
 				Playing: nowPlaying.IsPlaying,
 			},
 			"songEndTime": updateNext.Format(time.RFC3339),

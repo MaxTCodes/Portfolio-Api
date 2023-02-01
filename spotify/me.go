@@ -20,6 +20,9 @@ type NowPlaying struct {
 			} `json:"external_urls"`
 			Name string `json:"name"`
 		} `json:"artists"`
+		ExternalUrls struct {
+			Spotify string `json:"spotify"`
+		} `json:"external_urls"`
 		DurationMs int    `json:"duration_ms"`
 		Name       string `json:"name"`
 	} `json:"item"`
