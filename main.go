@@ -144,7 +144,7 @@ func main() {
 				Name:    nowPlaying.Item.Name,
 				Playing: nowPlaying.IsPlaying,
 			},
-			"updateExpectedIn": updateNext.UnixMilli() - time.Now().UnixMilli(),
+			"updateExpectedAt": updateNext.Format(time.RFC3339),
 		})
 	})
 
