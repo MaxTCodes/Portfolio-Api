@@ -11,7 +11,6 @@ import (
 	"github.com/gofiber/fiber/v2/middleware/compress"
 	"github.com/gofiber/fiber/v2/middleware/cors"
 	recover2 "github.com/gofiber/fiber/v2/middleware/recover"
-	"github.com/gofiber/helmet/v2"
 	"github.com/thanhpk/randstr"
 	"log"
 	"os"
@@ -78,7 +77,6 @@ func main() {
 		AllowOrigins: "*",
 		AllowMethods: "GET",
 	}))
-	app.Use(helmet.New())
 	//#endregion
 
 	// this has to be static because spotify requires a constant callback url
