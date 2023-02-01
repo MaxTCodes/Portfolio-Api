@@ -32,7 +32,8 @@ type (
 )
 
 const (
-	port = ":5005"
+	port             = ":5005"
+	refreshTokenFile = ".refreshToken"
 )
 
 var (
@@ -47,6 +48,21 @@ var (
 	updateNext                     time.Time
 	lastUpdate                     time.Time
 )
+
+func init() {
+	if _, err := os.Stat(refreshTokenFile); err != nil {
+		if !os.IsNotExist(err) {
+			panic(err)
+		}
+		return
+	}
+	f, err := os.ReadFile(refreshTokenFile)
+	if err != nil {
+		panic(err)
+	}
+	refreshToken = string(f)
+	log.Println("Loaded refresh token from saved file")
+}
 
 func main() {
 	// make spotify client
@@ -104,17 +120,26 @@ func main() {
 			})
 		}
 		log.Println("Successfully updated refresh token by request from " + c.IP())
+		err = os.WriteFile(refreshTokenFile, []byte(token), 0644)
+		if err != nil {
+			log.Printf("Error: %s", err.Error())
+			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+				"success": false,
+			})
+		}
+
 		return c.SendString("Successfully Set Refresh Token")
 	}).Name("callback1")
 
 	admin := app.Group(adminPath)
 	admin.Use(func(c *fiber.Ctx) error {
+		// clear old cookies so we don't use that much data :laugh:
+		c.ClearCookie()
 		c.Cookie(&fiber.Cookie{
 			Name:    adminCookieName,
 			Value:   adminCookiePassword,
 			Expires: time.Now().Add(time.Hour * 24),
 		})
-		// just another check to make sure
 		authorizedIPHash = getIPHash(c.IP())
 		return c.Next()
 	})

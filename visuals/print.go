@@ -41,7 +41,7 @@ func StartUpMsg(version, adminPath string) {
 	mainLogo += " │                                                               │\n"
 	mainLogo += " │ " + centerValue(fmt.Sprintf("Login Path: https://api.maxthakur.xyz/%s", adminPath), lineLen+2) + " │\n"
 	mainLogo += " │                                                               │\n"
-	mainLogo += " └───────────────────────────────────────────────────────────────┘\n"
+	mainLogo += " └───────────────────────────────────────────────────────────────┘"
 
 	fmt.Println(mainLogo)
 }
