@@ -170,7 +170,7 @@ func updateNowPlaying(client spotify.Client) error {
 	if np.IsPlaying {
 		curTime := time.Unix(np.Timestamp/1000, 0)
 		timeLeft := np.Item.DurationMs - np.ProgressMs
-		updateNext = curTime.Add(time.Second * time.Duration(timeLeft))
+		updateNext = curTime.Add(time.Millisecond * time.Duration(timeLeft))
 	}
 	nowPlaying = &np
 	lastUpdate = time.Now()
