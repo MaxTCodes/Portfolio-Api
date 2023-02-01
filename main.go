@@ -6,6 +6,7 @@ import (
 	"backend/visuals"
 	"crypto/sha512"
 	"encoding/hex"
+	"errors"
 	"github.com/goccy/go-json"
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/compress"
@@ -26,6 +27,7 @@ type (
 	}
 	SongData struct {
 		Artist, Song info
+		Device       spotify.Device
 		Playing      bool
 	}
 )
@@ -33,6 +35,7 @@ type (
 const (
 	port             = ":5005"
 	refreshTokenFile = ".refreshToken"
+	refreshMaxTime   = 10
 )
 
 var (
@@ -151,12 +154,18 @@ func main() {
 	})
 
 	app.Get("/NowPlaying", func(c *fiber.Ctx) error {
-		if updateNext.Before(time.Now()) || lastUpdate.Add(time.Second*15).Before(time.Now()) {
+		if updateNext.Before(time.Now()) || lastUpdate.Add(time.Second*refreshMaxTime).Before(time.Now()) {
 			err := updateNowPlaying(client)
 			if err != nil {
-				log.Printf("Error: %s", err.Error())
 				return c.Status(fiber.StatusFailedDependency).JSON(fiber.Map{
 					"success": false,
+					"message": err.Error(),
+				})
+			}
+			if nowPlaying == nil || err != nil {
+				return c.Status(fiber.StatusOK).JSON(fiber.Map{
+					"success": false,
+					"message": "Nothing is playing!",
 				})
 			}
 		}
@@ -171,6 +180,7 @@ func main() {
 					Link: nowPlaying.Item.ExternalUrls.Spotify,
 					Name: nowPlaying.Item.Name,
 				},
+				Device:  nowPlaying.DeviceData,
 				Playing: nowPlaying.IsPlaying,
 			},
 			"songEndTime": updateNext.Format(time.RFC3339),
@@ -193,7 +203,10 @@ func getIPHash(ip string) string {
 func updateNowPlaying(client spotify.Client) error {
 	np, err := client.GetNowPlaying(refreshToken)
 	if err != nil {
-		log.Printf("Error: %s", err.Error())
+		if errors.Is(err, spotify.NotPlaying) {
+			nowPlaying = nil
+			return nil
+		}
 		return err
 	}
 	if np.IsPlaying {
@@ -201,7 +214,7 @@ func updateNowPlaying(client spotify.Client) error {
 		timeLeft := np.Item.DurationMs - np.ProgressMs
 		updateNext = curTime.Add(time.Millisecond * time.Duration(timeLeft))
 	}
-	nowPlaying = &np
+	nowPlaying = np
 	lastUpdate = time.Now()
 	return nil
 }
