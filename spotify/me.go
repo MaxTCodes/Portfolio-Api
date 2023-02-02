@@ -8,7 +8,7 @@ import (
 )
 
 const (
-	nowPlayingURL = "https://api.spotify.com/v1/me/player/currently-playing"
+	nowPlayingURL = "https://api.spotify.com/v1/me/player/"
 )
 
 var (
@@ -21,8 +21,9 @@ type (
 		Type string `json:"type"`
 	}
 	NowPlaying struct {
-		Timestamp  int64 `json:"timestamp"`
-		ProgressMs int   `json:"progress_ms"`
+		DeviceData Device `json:"device"`
+		Timestamp  int64  `json:"timestamp"`
+		ProgressMs int    `json:"progress_ms"`
 		Item       struct {
 			Artists []struct {
 				ExternalUrls struct {
@@ -36,8 +37,7 @@ type (
 			DurationMs int    `json:"duration_ms"`
 			Name       string `json:"name"`
 		} `json:"item"`
-		DeviceData Device `json:"device"`
-		IsPlaying  bool   `json:"is_playing"`
+		IsPlaying bool `json:"is_playing"`
 	}
 )
 
