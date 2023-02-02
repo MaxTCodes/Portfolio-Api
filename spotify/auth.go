@@ -13,7 +13,7 @@ import (
 )
 
 const (
-	refreshTokenURL = "https://accounts.spotify.com/authorize?client_id=%s&response_type=code&redirect_uri=%s&scope=user-read-currently-playing&state=%s"
+	refreshTokenURL = "https://accounts.spotify.com/authorize?client_id=%s&response_type=code&redirect_uri=%s&scope=user-read-playback-state&state=%s"
 	accessTokenURL  = "https://accounts.spotify.com/api/token"
 )
 
