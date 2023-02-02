@@ -30,11 +30,10 @@ type (
 )
 
 func New(secret, id string) Client {
-	authStr := fmt.Sprintf("%s:%s", id, secret)
 	return Client{
 		Secret: secret,
 		ID:     id,
-		Auth:   base64.URLEncoding.EncodeToString([]byte(authStr)),
+		Auth:   base64.URLEncoding.EncodeToString([]byte(id + ":" + secret)),
 	}
 }
 
@@ -70,7 +69,7 @@ func (client Client) getAccessToken(refreshToken string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	req.Header.Add("Authorization", fmt.Sprintf("Basic %s", client.Auth))
+	req.Header.Add("Authorization", "Basic "+client.Auth)
 	req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
 	tokens, err := makeTokenReq(req)
 	return tokens.AccessToken, err
