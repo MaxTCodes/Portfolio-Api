@@ -14,6 +14,7 @@ import (
 	recover2 "github.com/gofiber/fiber/v2/middleware/recover"
 	"github.com/thanhpk/randstr"
 	"log"
+	"math/rand"
 	"os"
 	"time"
 
@@ -35,36 +36,42 @@ type (
 const (
 	port             = ":5005"
 	refreshTokenFile = ".refreshToken"
-	refreshMaxTime   = 10
+	refreshBaseTime  = 4
+)
+
+// all variables that get
+var (
+	refreshToken, authorizedIPHash string
+	nowPlaying                     *spotify.NowPlaying
+	updateNext                     time.Time
+	client                         spotify.Client
 )
 
 var (
-	refreshToken, authorizedIPHash string // both of these get defined later on in the app
-	clientID                       = os.Getenv("CLIENT_ID")
-	clientSecret                   = os.Getenv("CLIENT_SECRET")
-	adminPath                      = randstr.String(15)
-	updatePath                     = randstr.String(5)
-	adminCookieName                = randstr.String(10)
-	adminCookiePassword            = randstr.String(20)
-	nowPlaying                     *spotify.NowPlaying
-	updateNext                     time.Time
-	lastUpdate                     time.Time
+	clientID            = os.Getenv("CLIENT_ID")
+	clientSecret        = os.Getenv("CLIENT_SECRET")
+	adminPath           = randstr.String(15)
+	updatePath          = randstr.String(5)
+	adminCookieName     = randstr.String(10)
+	adminCookiePassword = randstr.String(20)
 )
 
 func init() {
-	if _, err := os.Stat(refreshTokenFile); err != nil {
-		if !os.IsNotExist(err) {
-			panic(err)
-		}
-		log.Println("No saved refresh token found!")
-		return
+	rand.Seed(time.Now().UnixMicro())
+}
+
+func runBgTask() {
+	if err := updateNowPlaying(); err != nil {
+		log.Println("Failed to update Spotify Listening, Error: " + err.Error())
 	}
-	f, err := os.ReadFile(refreshTokenFile)
-	if err != nil {
-		panic(err)
+}
+
+func runPollingThread() {
+	for {
+		go runBgTask()
+		// hard limit of 10 seconds, Spotify allows for approximately 180 requests per minute.
+		<-time.After(time.Duration(refreshBaseTime+rand.Intn(6)) * time.Second)
 	}
-	refreshToken = string(f)
-	log.Println("Loaded refresh token from saved file")
 }
 
 func main() {
@@ -72,11 +79,13 @@ func main() {
 	log.SetOutput(os.Stdout)
 
 	// make spotify client
-	client := spotify.New(clientSecret, clientID)
+	client = spotify.New(clientSecret, clientID)
+
+	go runPollingThread()
 
 	app := fiber.New(fiber.Config{
 		AppName:               "Max's Portfolio Backend",
-		RequestMethods:        []string{"GET", "POST", "HEAD"},
+		RequestMethods:        []string{"GET", "POST", "HEAD", "OPTIONS"},
 		DisableStartupMessage: true,
 		// Because I use cloudflare as a proxy
 		ProxyHeader: "CF-Connecting-IP",
@@ -87,6 +96,7 @@ func main() {
 	//#region hooks
 	app.Hooks().OnListen(func() error {
 		visuals.StartUpMsg(version.GetVersionHash(), adminPath+"/"+updatePath)
+		checkForAndLoadRefreshKey()
 		return nil
 	})
 	//#endregion
@@ -102,7 +112,28 @@ func main() {
 	}))
 	//#endregion
 
-	// this has to be static because spotify requires a constant callback url
+	//#region normal user paths
+	app.Get("/NowPlaying", func(c *fiber.Ctx) error {
+		return c.JSON(fiber.Map{
+			"success": true,
+			"playingData": SongData{
+				Artist: info{
+					Link: nowPlaying.Item.Artists[0].ExternalUrls.Spotify,
+					Name: nowPlaying.Item.Artists[0].Name,
+				},
+				Song: info{
+					Link: nowPlaying.Item.ExternalUrls.Spotify,
+					Name: nowPlaying.Item.Name,
+				},
+				Device:  nowPlaying.DeviceData,
+				Playing: nowPlaying.IsPlaying,
+			},
+			"songEndTime": updateNext.Format(time.RFC3339),
+		})
+	})
+	//#endregion
+
+	//#region admin paths
 	app.Get("/admin/spotify/callback/1", func(c *fiber.Ctx) error {
 		if c.Cookies(adminCookieName, "") != adminCookiePassword || authorizedIPHash != getIPHash(c.IP()) {
 			return c.SendStatus(fiber.StatusBadRequest)
@@ -119,12 +150,10 @@ func main() {
 			})
 		}
 		refreshToken = token
-		err = updateNowPlaying(client)
+		err = updateNowPlaying()
 		if err != nil {
 			log.Printf("Error: %s", err.Error())
-			return c.Status(fiber.StatusFailedDependency).JSON(fiber.Map{
-				"success": false,
-			})
+			return c.Status(fiber.StatusFailedDependency).SendString("Failed to generate valid refresh token. Try again!")
 		}
 		log.Println("Successfully updated refresh token by request from " + c.IP())
 		err = os.WriteFile(refreshTokenFile, []byte(token), 0644)
@@ -155,40 +184,7 @@ func main() {
 		time.Sleep(time.Millisecond * 500)
 		return c.Redirect(authURL, 301)
 	})
-
-	app.Get("/NowPlaying", func(c *fiber.Ctx) error {
-		if updateNext.Before(time.Now()) || lastUpdate.Add(time.Second*refreshMaxTime).Before(time.Now()) {
-			err := updateNowPlaying(client)
-			if err != nil {
-				return c.Status(fiber.StatusFailedDependency).JSON(fiber.Map{
-					"success": false,
-					"message": err.Error(),
-				})
-			}
-			if nowPlaying == nil || err != nil {
-				return c.Status(fiber.StatusOK).JSON(fiber.Map{
-					"success": false,
-					"message": "Nothing is playing!",
-				})
-			}
-		}
-		return c.JSON(fiber.Map{
-			"success": true,
-			"playingData": SongData{
-				Artist: info{
-					Link: nowPlaying.Item.Artists[0].ExternalUrls.Spotify,
-					Name: nowPlaying.Item.Artists[0].Name,
-				},
-				Song: info{
-					Link: nowPlaying.Item.ExternalUrls.Spotify,
-					Name: nowPlaying.Item.Name,
-				},
-				Device:  nowPlaying.DeviceData,
-				Playing: nowPlaying.IsPlaying,
-			},
-			"songEndTime": updateNext.Format(time.RFC3339),
-		})
-	})
+	//#endregion
 
 	// this one is a one-liner because it's so short
 	if err := app.Listen(port); err != nil {
@@ -203,7 +199,7 @@ func getIPHash(ip string) string {
 	return hex.EncodeToString(hash[:])
 }
 
-func updateNowPlaying(client spotify.Client) error {
+func updateNowPlaying() error {
 	np, err := client.GetNowPlaying(refreshToken)
 	if err != nil {
 		if errors.Is(err, spotify.NotPlaying) {
@@ -218,6 +214,21 @@ func updateNowPlaying(client spotify.Client) error {
 		updateNext = curTime.Add(time.Millisecond * time.Duration(timeLeft))
 	}
 	nowPlaying = np
-	lastUpdate = time.Now()
 	return nil
+}
+
+func checkForAndLoadRefreshKey() {
+	if _, err := os.Stat(refreshTokenFile); err != nil {
+		if !os.IsNotExist(err) {
+			panic(err)
+		}
+		log.Println("No saved refresh token found!")
+		return
+	}
+	f, err := os.ReadFile(refreshTokenFile)
+	if err != nil {
+		panic(err)
+	}
+	refreshToken = string(f)
+	log.Println("Loaded refresh token from saved file")
 }
