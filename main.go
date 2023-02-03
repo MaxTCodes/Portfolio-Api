@@ -68,6 +68,9 @@ func init() {
 }
 
 func main() {
+	// fix that it shows up as errors in pm2
+	log.SetOutput(os.Stdout)
+
 	// make spotify client
 	client := spotify.New(clientSecret, clientID)
 
