@@ -114,6 +114,12 @@ func main() {
 
 	//#region normal user paths
 	app.Get("/NowPlaying", func(c *fiber.Ctx) error {
+		if nowPlaying == nil {
+			return c.JSON(fiber.Map{
+				"message": "Nothing is playing!",
+				"success": false,
+			})
+		}
 		return c.JSON(fiber.Map{
 			"success": true,
 			"playingData": SongData{
@@ -201,7 +207,7 @@ func getIPHash(ip string) string {
 
 func updateNowPlaying() error {
 	np, err := client.GetNowPlaying(refreshToken)
-	if err != nil {
+	if err != nil || np == nil {
 		if errors.Is(err, spotify.NotPlaying) {
 			nowPlaying = nil
 			return nil
