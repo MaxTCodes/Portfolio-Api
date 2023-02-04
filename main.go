@@ -14,11 +14,10 @@ import (
 	rec "github.com/gofiber/fiber/v2/middleware/recover"
 	"github.com/thanhpk/randstr"
 	"log"
-	"math/rand"
 	"os"
 	"time"
 
-	// lol fewer lines = better right?
+	// fewer lines = better right..?
 	_ "github.com/joho/godotenv/autoload"
 )
 
@@ -28,8 +27,15 @@ type (
 	}
 	SongData struct {
 		Artist, Song info
-		Device       spotify.Device
+		Device       string
 		Playing      bool
+	}
+	AllowedDevice struct {
+		Id     string `json:"id"`
+		Prefix string `json:"prefix"`
+	}
+	Config struct {
+		AllowedDevices []AllowedDevice `json:"allowedDevices"`
 	}
 )
 
@@ -37,14 +43,16 @@ const (
 	port             = ":5005"
 	refreshTokenFile = ".refreshToken"
 	refreshBaseTime  = 4
+	configFile       = "config.json"
 )
 
-// all variables that get
+// all variables that get defined later in the API
 var (
 	refreshToken, authorizedIPHash string
-	nowPlaying                     *spotify.NowPlaying
 	updateNext                     time.Time
+	nowPlaying                     *spotify.NowPlaying
 	client                         spotify.Client
+	config                         Config
 )
 
 var (
@@ -55,10 +63,6 @@ var (
 	adminCookieName     = randstr.String(10)
 	adminCookiePassword = randstr.String(20)
 )
-
-func init() {
-	rand.Seed(time.Now().UnixMicro())
-}
 
 func runBgTask() {
 	if err := updateNowPlaying(); err != nil {
@@ -97,9 +101,11 @@ func main() {
 	app.Hooks().OnListen(func() error {
 		visuals.StartUpMsg(version.GetVersionHash(), adminPath+"/"+updatePath)
 		checkForAndLoadRefreshKey()
+		loadConfig()
 		return nil
 	})
 	//#endregion
+
 	//#region middleware
 	app.Use(rec.New())
 	app.Use(compress.New(compress.Config{
@@ -120,6 +126,11 @@ func main() {
 				"success": false,
 			})
 		}
+		device := "a " + nowPlaying.DeviceData.Type
+		included, deviceData := isAnAllowedDevice(nowPlaying.DeviceData.Id)
+		if included {
+			device = deviceData.Prefix + " " + nowPlaying.DeviceData.Name
+		}
 		return c.JSON(fiber.Map{
 			"success": true,
 			"playingData": SongData{
@@ -131,7 +142,7 @@ func main() {
 					Link: nowPlaying.Item.ExternalUrls.Spotify,
 					Name: nowPlaying.Item.Name,
 				},
-				Device:  nowPlaying.DeviceData,
+				Device:  device,
 				Playing: nowPlaying.IsPlaying,
 			},
 			"songEndTime": updateNext.Format(time.RFC3339),
@@ -200,6 +211,15 @@ func main() {
 
 }
 
+func isAnAllowedDevice(str string) (bool, *AllowedDevice) {
+	for _, device := range config.AllowedDevices {
+		if device.Id == str {
+			return true, &device
+		}
+	}
+	return false, nil
+}
+
 func getIPHash(ip string) string {
 	hash := sha512.Sum512_256([]byte(ip))
 	return hex.EncodeToString(hash[:])
@@ -223,11 +243,22 @@ func updateNowPlaying() error {
 	return nil
 }
 
-func checkForAndLoadRefreshKey() {
-	if _, err := os.Stat(refreshTokenFile); err != nil {
+func fileExists(fileName string) (bool, error) {
+	if _, err := os.Stat(fileName); err != nil {
 		if !os.IsNotExist(err) {
-			panic(err)
+			return false, err
 		}
+		return false, nil
+	}
+	return true, nil
+}
+
+func checkForAndLoadRefreshKey() {
+	exists, err := fileExists(refreshTokenFile)
+	if err != nil {
+		panic(err)
+	}
+	if !exists {
 		log.Println("No saved refresh token found!")
 		return
 	}
@@ -237,6 +268,26 @@ func checkForAndLoadRefreshKey() {
 	}
 	refreshToken = string(f)
 	log.Println("Loaded refresh token from saved file")
+}
+
+func loadConfig() {
+	exists, err := fileExists(configFile)
+	if err != nil {
+		panic(err)
+	}
+	if !exists {
+		log.Fatalln("Please make a config.json file based off config.example.json")
+		return
+	}
+	configBytes, err := os.ReadFile(configFile)
+	if err != nil {
+		panic(err)
+	}
+	err = json.Unmarshal(configBytes, &config)
+	if err != nil {
+		panic(err)
+	}
+	log.Println("Loaded config from config.json")
 }
 
 func getRandomUint32() uint32 {
