@@ -16,6 +16,7 @@ import (
 	"log"
 	"math/rand"
 	"os"
+	"strconv"
 	"time"
 
 	// lol fewer lines = better right?
@@ -70,7 +71,7 @@ func runPollingThread() {
 	for {
 		go runBgTask()
 		// hard limit of 10 seconds, Spotify allows for approximately 180 requests per minute.
-		<-time.After(time.Duration(refreshBaseTime+rand.Intn(6)) * time.Second)
+		<-time.After(time.Duration(refreshBaseTime+(getRandomUint32()%6)) * time.Second)
 	}
 }
 
@@ -101,7 +102,7 @@ func main() {
 	})
 	//#endregion
 	//#region middleware
-	app.Use(recover2.New())
+	app.Use(recover.New())
 	app.Use(compress.New(compress.Config{
 		Level: compress.LevelBestCompression,
 	}))
@@ -112,7 +113,7 @@ func main() {
 	}))
 	//#endregion
 
-	//#region normal user paths
+	//#region normal paths
 	app.Get("/NowPlaying", func(c *fiber.Ctx) error {
 		if nowPlaying == nil {
 			return c.JSON(fiber.Map{
@@ -237,4 +238,9 @@ func checkForAndLoadRefreshKey() {
 	}
 	refreshToken = string(f)
 	log.Println("Loaded refresh token from saved file")
+}
+
+func getRandomUint32() uint32 {
+	x := time.Now().UnixNano()
+	return uint32((x >> 32) ^ x)
 }
