@@ -18,6 +18,8 @@ var (
 type (
 	Device struct {
 		Type string `json:"type"`
+		Name string `json:"name"`
+		Id   string `json:"id"`
 	}
 	NowPlaying struct {
 		DeviceData Device `json:"device"`
