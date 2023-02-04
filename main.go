@@ -11,12 +11,11 @@ import (
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/compress"
 	"github.com/gofiber/fiber/v2/middleware/cors"
-	recover2 "github.com/gofiber/fiber/v2/middleware/recover"
+	rec "github.com/gofiber/fiber/v2/middleware/recover"
 	"github.com/thanhpk/randstr"
 	"log"
 	"math/rand"
 	"os"
-	"strconv"
 	"time"
 
 	// lol fewer lines = better right?
@@ -102,7 +101,7 @@ func main() {
 	})
 	//#endregion
 	//#region middleware
-	app.Use(recover.New())
+	app.Use(rec.New())
 	app.Use(compress.New(compress.Config{
 		Level: compress.LevelBestCompression,
 	}))
