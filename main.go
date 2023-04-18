@@ -126,7 +126,7 @@ func main() {
 				"success": false,
 			})
 		}
-		device := "a " + nowPlaying.DeviceData.Type
+		device := " a " + nowPlaying.DeviceData.Type
 		included, deviceData := isAnAllowedDevice(nowPlaying.DeviceData.Id)
 		if included {
 			device = deviceData.Prefix + " " + nowPlaying.DeviceData.Name
