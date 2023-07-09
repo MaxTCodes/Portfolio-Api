@@ -1,4 +1,4 @@
-# [Max's Portfolio](https://maxthakur.xyz) Api
+# Max's Portfolio Api
 The original version of [my portfolio](https://github.com/MaxTCodes/portfolio) had used last.fm, but they send a lot unneeded data. So I made this as a drop-in replacement.
 
 ## License
