@@ -1,24 +1,23 @@
 module backend
 
-go 1.19
+go 1.20
+
+require github.com/goccy/go-json v0.10.2
 
 require (
-	github.com/goccy/go-json v0.10.0
-	github.com/gofiber/fiber/v2 v2.41.0
-	github.com/gosimple/hashdir v1.0.1
-	github.com/joho/godotenv v1.4.0
-	github.com/mattn/go-runewidth v0.0.14
-	github.com/thanhpk/randstr v1.0.4
-)
-
-require (
-	github.com/andybalholm/brotli v1.0.4 // indirect
-	github.com/klauspost/compress v1.15.9 // indirect
+	github.com/andybalholm/brotli v1.0.5 // indirect
+	github.com/gofiber/fiber/v2 v2.49.2 // indirect
+	github.com/google/uuid v1.3.1 // indirect
+	github.com/joho/godotenv v1.5.1 // indirect
+	github.com/klauspost/compress v1.16.7 // indirect
 	github.com/mattn/go-colorable v0.1.13 // indirect
-	github.com/mattn/go-isatty v0.0.17 // indirect
+	github.com/mattn/go-isatty v0.0.19 // indirect
+	github.com/mattn/go-runewidth v0.0.15 // indirect
 	github.com/rivo/uniseg v0.2.0 // indirect
 	github.com/valyala/bytebufferpool v1.0.0 // indirect
-	github.com/valyala/fasthttp v1.43.0 // indirect
+	github.com/valyala/fasthttp v1.49.0 // indirect
 	github.com/valyala/tcplisten v1.0.0 // indirect
-	golang.org/x/sys v0.0.0-20220811171246-fbc7d0a398ab // indirect
+	go.uber.org/multierr v1.10.0 // indirect
+	go.uber.org/zap v1.26.0 // indirect
+	golang.org/x/sys v0.12.0 // indirect
 )

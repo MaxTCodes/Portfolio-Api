@@ -2,9 +2,11 @@ package spotify
 
 import (
 	"errors"
-	"github.com/goccy/go-json"
 	"io"
 	"net/http"
+	"sync"
+
+	"github.com/goccy/go-json"
 )
 
 const (
@@ -12,7 +14,7 @@ const (
 )
 
 var (
-	NotPlaying = errors.New("nothing is playing")
+	ErrNotPlaying = errors.New("nothing is playing")
 )
 
 type (
@@ -40,7 +42,23 @@ type (
 		} `json:"item"`
 		IsPlaying bool `json:"is_playing"`
 	}
+	NowPlayingSafe struct {
+		mu      sync.Mutex
+		Playing *NowPlaying
+	}
 )
+
+func (np *NowPlayingSafe) Set(playing *NowPlaying) {
+	np.mu.Lock()
+	defer np.mu.Unlock()
+	np.Playing = playing
+}
+
+func (np *NowPlayingSafe) Get() *NowPlaying {
+	np.mu.Lock()
+	defer np.mu.Unlock()
+	return np.Playing
+}
 
 // GetNowPlaying Get the now playing data from Spotify's API
 func (client Client) GetNowPlaying(refreshToken string) (*NowPlaying, error) {
@@ -72,7 +90,7 @@ func (client Client) GetNowPlaying(refreshToken string) (*NowPlaying, error) {
 	}
 
 	if len(bod) == 0 {
-		return nil, NotPlaying
+		return nil, ErrNotPlaying
 	}
 	// make body
 	var body NowPlaying

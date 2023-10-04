@@ -4,12 +4,13 @@ import (
 	"bytes"
 	"encoding/base64"
 	"fmt"
-	"github.com/goccy/go-json"
 	"io"
 	"net/http"
 	"net/url"
 	"strconv"
 	"time"
+
+	"github.com/goccy/go-json"
 )
 
 const (
@@ -29,8 +30,8 @@ type (
 	}
 )
 
-func New(secret, id string) Client {
-	return Client{
+func New(secret, id string) *Client {
+	return &Client{
 		Secret: secret,
 		ID:     id,
 		Auth:   base64.URLEncoding.EncodeToString([]byte(id + ":" + secret)),

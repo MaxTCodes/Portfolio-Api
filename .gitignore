@@ -1,6 +1,0 @@
-/tmp
-backend*
-.env
-.idea/*
-.refreshToken
-config.json
